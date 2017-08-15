@@ -15,7 +15,7 @@ void cache_run_lru(char *trace, char *output, char *smrTrc, char *ssdTrc)
 		cache_lru(cache);
 		
 		i++;
-		if(i%50000==0)
+		if(i%100000==0)
 		{
 			printf("LRU is Handling %d \n",i);
 		}
@@ -39,15 +39,39 @@ void cache_run_larc(char *trace, char *output, char *smrTrc, char *ssdTrc)
 		cache_larc(cache);
 		
 		i++;
-		if(i%50000==0)
+		if(i%100000==0)
 		{
-			printf("LRU is Handling %d \n",i);
+			printf("LARC is Handling %d \n",i);
 		}
 	}
 	cache_print_larc(cache);
 	cache_free(cache);
 }
 
+
+void cache_run_zac(char *trace, char *output, char *smrTrc, char *ssdTrc)
+{
+	int i=0;
+	struct cache_info *cache;
+	
+	cache=(struct cache_info *)malloc(sizeof(struct cache_info));
+	alloc_assert(cache,"cache");
+	memset(cache,0,sizeof(struct cache_info));
+	
+	cache_init_zac(cache,trace,output,smrTrc,ssdTrc);
+	while(get_req(cache) != FAILURE)
+	{
+		cache_zac(cache);
+		
+		i++;
+		if(i%100000==0)
+		{
+			printf("ZAC is Handling %d \n",i);
+		}
+	}
+	cache_print_zac(cache);
+	cache_free(cache);
+}
 
 void cache_delete_tail_blk_reg(struct cache_info *cache)
 {
@@ -154,7 +178,7 @@ int get_req(struct cache_info *cache)
 	}	
 	
 	sscanf(cache->buffer,"%lld %d %d\n",&blkn,&size,&type);
-	printf("%lld %d %d\n",blkn,size,type);
+	//printf("%lld %d %d\n",blkn,size,type);
 	cache->req->type=type;
 	cache->req->blkn=blkn;
 	cache->req->size=size;

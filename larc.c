@@ -4,26 +4,19 @@
 void cache_init_larc(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc)
 {
 	cache->size_block=4;	//KB
-	cache->size_cache=1024;	//MB
+	cache->size_cache=128;	//MB
 	
 	cache->blk_trc_all=0;
 	
-	//cache->blk_max_all=1024*cache->size_cache/cache->size_block;
-	cache->blk_max_all=60;
-	cache->blk_max_reg=30;
-	cache->blk_max_gst=30;
+	cache->blk_max_all=1024*cache->size_cache/cache->size_block;
+	cache->blk_max_reg=cache->blk_max_all;
+	cache->blk_max_gst=cache->blk_max_all;
 	
-	cache->blk_now_all=0;
 	cache->blk_now_reg=0;
 	cache->blk_now_gst=0;
 	
-	cache->hit_all_all=0;
-	cache->hit_red_all=0;
-	cache->hit_wrt_all=0;
-	cache->hit_all_reg=0;
 	cache->hit_red_reg=0;
 	cache->hit_wrt_reg=0;
-	cache->hit_all_gst=0;
 	cache->hit_red_gst=0;
 	cache->hit_wrt_gst=0;
 		
@@ -57,9 +50,6 @@ void cache_larc(struct cache_info *cache)
 		{
 			if(cache_blk_larc_reg(cache,cache->req->blkn,WRITE) == SUCCESS)
 			{
-				cache->hit_all_all++;
-				cache->hit_wrt_all++;
-				cache->hit_all_reg++;
 				cache->hit_wrt_reg++;
 			}
 			else
@@ -67,56 +57,73 @@ void cache_larc(struct cache_info *cache)
 				if(cache_blk_larc_gst(cache,cache->req->blkn,WRITE) == SUCCESS)
 				{
 					//move this block from ghost cache to regular cache
-					cache->hit_all_gst++;
 					cache->hit_wrt_gst++;
 					
-					cache->blk_now_all++;
-					
+					if(cache->blk_now_gst > 0)
+					{
+						cache->blk_now_gst--;
+					}
+					cache->blk_now_reg++;
 					while(cache->blk_now_reg > cache->blk_max_reg)
 					{
 						cache_delete_tail_blk_reg(cache);
-						cache->blk_now_all--;
 						cache->blk_now_reg--;
 					}
 				}
 				else	//insert to the head of ghost cache
 				{
 					cache->blk_now_gst++;
+					while(cache->blk_now_gst > cache->blk_max_gst)
+					{
+						cache_delete_tail_blk_gst(cache);
+						cache->blk_now_gst--;
+					}
 				}
-				while(cache->blk_now_gst > cache->blk_max_gst)
-				{
-					cache_delete_tail_blk_gst(cache);
-					cache->blk_now_gst--;
-				}
-			}
+			}//else
 			cache->req->size--;
 			cache->req->blkn++;
 		}//while
 	}
-	/*
 	else if(cache->req->type == READ)
 	{
 		while(cache->req->size)
 		{
-			if(cache_blk_larc(cache,cache->req->blkn,READ) == SUCCESS)
+			if(cache_blk_larc_reg(cache,cache->req->blkn,READ) == SUCCESS)
 			{
-				cache->hit_all_all++;
-				cache->hit_red_all++;
+				cache->hit_red_reg++;
 			}
 			else
 			{
-				cache->blk_now_all++;
-			}
-			while(cache->blk_now_all > cache->blk_max_all)
-			{
-				cache_delete_tail_blk_reg(cache);
-				cache->blk_now_all--;
-			}
+				if(cache_blk_larc_gst(cache,cache->req->blkn,READ) == SUCCESS)
+				{
+					//move this block from ghost cache to regular cache
+					cache->hit_red_gst++;
+					
+					if(cache->blk_now_gst > 0)
+					{
+						cache->blk_now_gst--;
+					}
+					cache->blk_now_reg++;
+					while(cache->blk_now_reg > cache->blk_max_reg)
+					{
+						cache_delete_tail_blk_reg(cache);
+						cache->blk_now_reg--;
+					}
+				}
+				else	//insert to the head of ghost cache
+				{
+					cache->blk_now_gst++;
+					while(cache->blk_now_gst > cache->blk_max_gst)
+					{
+						cache_delete_tail_blk_gst(cache);
+						cache->blk_now_gst--;
+					}
+				}
+			}//else
 			cache->req->size--;
 			cache->req->blkn++;
 		}//while
 	}//else
-	*/
 	else
 	{
 		printf("ERROR: Wrong Request Type! \n");
@@ -277,12 +284,14 @@ void cache_print_larc(struct cache_info *cache)
 	struct blk_info *index;
 	
 	printf("------------------------\n");
-	printf("Cache Max blk = %d\n",cache->blk_max_all);
-	printf("Cache Now blk = %d\n",cache->blk_now_all);
+	printf("Cache Max blk Reg = %d\n",cache->blk_max_reg);
+	printf("Cache Max blk Gst = %d\n",cache->blk_max_gst);
+	printf("Cache Now blk Reg = %d\n",cache->blk_now_reg);
+	printf("Cache Now blk Gst = %d\n",cache->blk_now_gst);
 	printf("Cache Trc blk = %d\n",cache->blk_trc_all);
-	printf("Cache Hit all = %d\n",(cache->hit_red_all + cache->hit_wrt_all));
-	printf("Cache Hit Red = %d\n",cache->hit_red_all);
-	printf("Cache Hit Wrt = %d\n",cache->hit_wrt_all);
+	printf("Cache Hit all = %d\n",(cache->hit_red_reg + cache->hit_wrt_reg));
+	printf("Cache Hit Red = %d\n",cache->hit_red_reg);
+	printf("Cache Hit Wrt = %d\n",cache->hit_wrt_reg);
 	printf("Cache Hit all Reg = %d\n",(cache->hit_red_reg + cache->hit_wrt_reg));
 	printf("Cache Hit Red Reg = %d\n",cache->hit_red_reg);
 	printf("Cache Hit Wrt Reg = %d\n",cache->hit_wrt_reg);
@@ -291,12 +300,6 @@ void cache_print_larc(struct cache_info *cache)
 	printf("Cache Hit Wrt Gst = %d\n",cache->hit_wrt_gst);
 	
 	printf("------------------------\n");
-	fprintf(cache->file_out,"Cache Max blk = %d\n",cache->blk_max_all);
-	fprintf(cache->file_out,"Cache Now blk = %d\n",cache->blk_now_all);
-	fprintf(cache->file_out,"Cache Trc blk = %d\n",cache->blk_trc_all);
-	fprintf(cache->file_out,"Cache Hit all = %d\n",(cache->hit_red_all + cache->hit_wrt_all));
-	fprintf(cache->file_out,"Cache Hit Red = %d\n",cache->hit_red_all);
-	fprintf(cache->file_out,"Cache Hit Wrt = %d\n",cache->hit_wrt_all);
 	
 	fprintf(cache->file_out,"-----Regular Cache----- \n");
 	index=cache->blk_head_reg;
