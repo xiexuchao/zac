@@ -93,7 +93,6 @@ void cache_run_larc(char *trace, char *output, char *smrTrc, char *ssdTrc);
 void cache_run_zac(char *trace, char *output, char *smrTrc, char *ssdTrc);
 void cache_delete_tail_blk_reg(struct cache_info *cache);
 void cache_delete_tail_blk_gst(struct cache_info *cache);
-void cache_delete_tail_set_evt(struct cache_info *cache);
 void cache_free(struct cache_info *cache);
 int get_req(struct cache_info *cache);
 void alloc_assert(void *p,char *s);
@@ -116,7 +115,7 @@ void cache_init_zac(struct cache_info *cache,char *trace, char *output, char *sm
 void zac_delete_tail_blk_reg(struct cache_info *cache);
 void zac_delete_tail_blk_gst(struct cache_info *cache);
 int zac_dedupe_blk_gst(struct cache_info *cache,unsigned int blkn);
-void zac_delete_tail_set_evt(struct cache_info *cache,unsigned int setn);
+void zac_delete_tail_set_evt(struct cache_info *cache);
 int zac_find_max(struct cache_info* cache);
 void cache_zac(struct cache_info *cache);
 int cache_blk_zac_reg(struct cache_info *cache,unsigned int blkn,unsigned int state);

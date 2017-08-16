@@ -111,19 +111,9 @@ void cache_delete_tail_blk_gst(struct cache_info *cache)
 		cache->blk_tail_gst = NULL;
 		cache->blk_head_gst = NULL;
 	}
-	if(block->state == DIRTY)
-	{
-		//A dirty blocks is evicted
-		
-	}
+	
 	free(block);
 }
-
-void cache_delete_tail_set_evt(struct cache_info *cache)
-{
-	
-}
-
 
 void cache_free(struct cache_info *cache)
 {

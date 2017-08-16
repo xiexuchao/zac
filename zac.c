@@ -1,6 +1,5 @@
 #include "cache.h"
 
-
 void cache_init_zac(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc)
 {
 	int i;
@@ -40,6 +39,8 @@ void cache_init_zac(struct cache_info *cache,char *trace, char *output, char *sm
     cache->blk_tail_reg=NULL;
     cache->blk_head_gst=NULL;
     cache->blk_tail_gst=NULL;
+    cache->blk_head_evt=NULL;
+    cache->blk_tail_evt=NULL;
         
     strcpy(cache->filename_trc,trace);
     strcpy(cache->filename_out,output);
@@ -56,7 +57,6 @@ void cache_init_zac(struct cache_info *cache,char *trace, char *output, char *sm
 void zac_delete_tail_blk_reg(struct cache_info *cache)
 {
 	struct blk_info *block;
-	unsigned int setn;
 	
 	block = cache->blk_tail_reg;
 	if(block != cache->blk_head_reg)
@@ -73,13 +73,17 @@ void zac_delete_tail_blk_reg(struct cache_info *cache)
 	if(block->state == DIRTY)
 	{
 		//A dirty blocks is evicted and admitted to evicting cache
-		setn = block->blkn/65536;
-		if(cache->set_size[setn] == 0)
+		if(cache->set_size[block->setn] == 0)
 		{
 			cache->set_now_evt++;
 		}
-		cache->set_size[setn]++;
-		
+		cache->set_size[block->setn]++;
+		cache->blk_now_evt++;	//check if a set need to be evicted
+		while(cache->blk_now_evt > cache->blk_max_evt)
+		{
+			zac_delete_tail_set_evt(cache);
+		}
+				
 		if(cache->blk_head_evt == NULL)
 		{
 			block->blk_prev = NULL;
@@ -94,7 +98,10 @@ void zac_delete_tail_blk_reg(struct cache_info *cache)
 			cache->blk_head_evt->blk_prev = block;
 			cache->blk_head_evt = block;
 		}
-		
+	}
+	else
+	{
+		free(block);
 	}
 }
 
@@ -113,7 +120,6 @@ void zac_delete_tail_blk_gst(struct cache_info *cache)
 		cache->blk_tail_gst = NULL;
 		cache->blk_head_gst = NULL;
 	}
-	
 	free(block);
 }
 
@@ -163,12 +169,14 @@ int zac_dedupe_blk_gst(struct cache_info *cache,unsigned int blkn)
 }
 
 
-void zac_delete_tail_set_evt(struct cache_info *cache,unsigned int setn)
+void zac_delete_tail_set_evt(struct cache_info *cache)
 {
 	struct blk_info *index;
-	unsigned int i,max_size;
+	unsigned int i=0,setn,max_size;
 	
+	setn = zac_find_max(cache);	
 	max_size=cache->set_size[setn];
+	printf("+++++++The size of evicted set is %d ++++++++\n",max_size);
 	
 	index = cache->blk_head_evt;
 	while(index)
@@ -204,13 +212,24 @@ void zac_delete_tail_set_evt(struct cache_info *cache,unsigned int setn)
 			}
 			free(index);
 			i++;
+			cache->blk_now_evt--;
+			cache->set_size[setn]--;
 		}//if
 		index = index->blk_next;
 	}
 	if(i != max_size)
 	{
-		printf("The blks evicted from EVT Cache != their set size !\n");
+		printf("+++++++++The blks evicted from EVT Cache %d != their set size %d !++++++++\n",i,max_size);
 		exit(-1);
+	}
+	if(i > 0)
+	{
+		cache->set_now_evt--;
+		if(cache->set_now_evt < 0)
+		{
+			printf("+++++++++A set is evicted from EVT Cache when EVT is empty !++++++++\n");
+			exit(-1);
+		}
 	}
 }
 
@@ -253,19 +272,32 @@ void cache_zac(struct cache_info *cache)
 				//move from evicting cache to regular cache
 				cache->hit_wrt_evt++;
 				
-				if(cache->blk_now_evt > 0)
+				cache->blk_now_evt--;
+				if(cache->blk_now_evt < 0)
 				{
-					cache->blk_now_evt--;
+					printf("+++a blk is hit in EVT cache, but it doesn't exist ?!+++++\n");
+					exit(-1);
 				}
+				
+				cache->set_size[cache->req->blkn/65536]--;
+				if(cache->set_size[cache->req->blkn/65536] < 0)
+				{
+					printf("+++a set in EVT cache is hit when its size is 0 ?!+++++\n");
+					exit(-1);
+				}
+				
 				cache->blk_now_reg++;
 				while(cache->blk_now_reg > cache->blk_max_reg)
 				{
-					cache_delete_tail_blk_reg(cache);
+					zac_delete_tail_blk_reg(cache);
 					cache->blk_now_reg--;
 				}
-				//evict the potential overlapped block in ghost cache
-				zac_dedupe_blk_gst(cache,cache->req->blkn);
 				
+				//evict the potential overlapped block in ghost cache
+				if(zac_dedupe_blk_gst(cache,cache->req->blkn) == SUCCESS)
+				{
+					cache->blk_now_gst--;
+				}
 			}
 			else
 			{
@@ -274,14 +306,17 @@ void cache_zac(struct cache_info *cache)
 					//move this block from ghost cache to regular cache
 					cache->hit_wrt_gst++;
 					
-					if(cache->blk_now_gst > 0)
+					cache->blk_now_gst--;
+					if(cache->blk_now_gst < 0)
 					{
-						cache->blk_now_gst--;
+						printf("+++a blk is hit in GST cache, but it doesn't exist ?!+++++\n");
+						exit(-1);
 					}
+					
 					cache->blk_now_reg++;
 					while(cache->blk_now_reg > cache->blk_max_reg)
 					{
-						cache_delete_tail_blk_reg(cache);
+						zac_delete_tail_blk_reg(cache);
 						cache->blk_now_reg--;
 					}
 				}
@@ -290,7 +325,7 @@ void cache_zac(struct cache_info *cache)
 					cache->blk_now_gst++;
 					while(cache->blk_now_gst > cache->blk_max_gst)
 					{
-						cache_delete_tail_blk_gst(cache);
+						zac_delete_tail_blk_gst(cache);
 						cache->blk_now_gst--;
 					}
 					
@@ -299,6 +334,10 @@ void cache_zac(struct cache_info *cache)
 					block=(struct blk_info *)malloc(sizeof(struct blk_info)); 
 					alloc_assert(block,"block");
 					memset(block,0,sizeof(struct blk_info));
+					
+					block->blkn = cache->req->blkn;
+					block->setn = cache->req->blkn/65536;
+					block->state = DIRTY;
 					
 					if(cache->blk_head_evt == NULL)
 					{
@@ -314,15 +353,98 @@ void cache_zac(struct cache_info *cache)
 						cache->blk_head_evt->blk_prev = block;
 						cache->blk_head_evt = block;
 					}
+					
+					if(cache->set_size[block->setn] == 0)
+					{
+						cache->set_now_evt++;
+					}
+					cache->set_size[block->setn]++;
+					cache->blk_now_evt++;	//check if a set need to be evicted
+					while(cache->blk_now_evt > cache->blk_max_evt)
+					{
+						zac_delete_tail_set_evt(cache);
+					}
+					
 				}
 			}//else
 			cache->req->size--;
 			cache->req->blkn++;
 		}//while
-	}
+	}//write
 	else if(cache->req->type == READ)
 	{
-		
+		while(cache->req->size)
+		{
+			if(cache_blk_zac_reg(cache,cache->req->blkn,READ) == SUCCESS)
+			{
+				cache->hit_red_reg++;
+			}
+			else if(cache_blk_zac_evt(cache,cache->req->blkn,READ) == SUCCESS) 
+			{
+				//move from evicting cache to regular cache
+				cache->hit_red_evt++;
+				
+				cache->blk_now_evt--;
+				if(cache->blk_now_evt < 0)
+				{
+					printf("+++a blk is read hit in EVT cache, but it doesn't exist ?!+++++\n");
+					exit(-1);
+				}
+				
+				cache->set_size[cache->req->blkn/65536]--;
+				if(cache->set_size[cache->req->blkn/65536] < 0)
+				{
+					printf("+++a set in EVT cache is READ hit when its size is 0 ?!+++++\n");
+					exit(-1);
+				}
+				
+				cache->blk_now_reg++;
+				while(cache->blk_now_reg > cache->blk_max_reg)
+				{
+					zac_delete_tail_blk_reg(cache);
+					cache->blk_now_reg--;
+				}
+				
+				//evict the potential overlapped block in ghost cache
+				if(zac_dedupe_blk_gst(cache,cache->req->blkn) == SUCCESS)
+				{
+					cache->blk_now_gst--;
+				}
+			}
+			else
+			{
+				if(cache_blk_zac_gst(cache,cache->req->blkn,READ) == SUCCESS)
+				{
+					//move this block from ghost cache to regular cache
+					cache->hit_red_gst++;
+					
+					cache->blk_now_gst--;
+					if(cache->blk_now_gst < 0)
+					{
+						printf("+++a blk is hit in GST cache, but it doesn't exist ?!+++++\n");
+						exit(-1);
+					}
+					
+					cache->blk_now_reg++;
+					while(cache->blk_now_reg > cache->blk_max_reg)
+					{
+						zac_delete_tail_blk_reg(cache);
+						cache->blk_now_reg--;
+					}
+				}
+				else//insert to the head of ghost cache
+				{
+					cache->blk_now_gst++;
+					while(cache->blk_now_gst > cache->blk_max_gst)
+					{
+						zac_delete_tail_blk_gst(cache);
+						cache->blk_now_gst--;
+					}
+				}
+			}//else
+			cache->req->size--;
+			cache->req->blkn++;
+		}//while
 	}//else
 	else
 	{
@@ -389,69 +511,76 @@ int cache_blk_zac_evt(struct cache_info *cache,unsigned int blkn,unsigned int st
 {
 	struct blk_info *index;
 	struct blk_info *block;
+	unsigned int setn = blkn/65536;
 	
-	index = cache->blk_head_evt;
-	while(index)
+	if(cache->set_size[setn] == 0)
 	{
-		if(index->blkn == blkn)
-		{	
-			//delete and insert this blk to the head of regular cache
-			if(index == cache->blk_head_evt)
-			{
-				//delete from head
-				if(index->blk_next != NULL) //current evicting cache size > 1
-				{
-					cache->blk_head_evt = cache->blk_head_evt->blk_next;
-					cache->blk_head_evt->blk_prev = NULL;
-				}
-				else	// head == tail
-				{
-					cache->blk_head_evt = NULL;
-					cache->blk_tail_evt = NULL;
-				}
-			}
-			else if(index == cache->blk_tail_evt)
+		return FAILURE;	
+	}
+	else
+	{
+		index = cache->blk_head_evt;
+		while(index)
+		{
+			if(index->blkn == blkn)
 			{	
-				//delete from tail
-				cache->blk_tail_evt = cache->blk_tail_evt->blk_prev;
-				cache->blk_tail_evt->blk_next = NULL;
-			}
-			else
-			{
-				//delete from list middle
-				index->blk_prev->blk_next=index->blk_next;
-				index->blk_next->blk_prev=index->blk_prev;
-			}
-			free(index);
+				//delete and insert this blk to the head of regular cache
+				if(index == cache->blk_head_evt)
+				{
+					//delete from head
+					if(index->blk_next != NULL) //current evicting cache size > 1
+					{
+						cache->blk_head_evt = cache->blk_head_evt->blk_next;
+						cache->blk_head_evt->blk_prev = NULL;
+					}
+					else	// head == tail
+					{
+						cache->blk_head_evt = NULL;
+						cache->blk_tail_evt = NULL;
+					}
+				}
+				else if(index == cache->blk_tail_evt)
+				{	
+					//delete from tail
+					cache->blk_tail_evt = cache->blk_tail_evt->blk_prev;
+					cache->blk_tail_evt->blk_next = NULL;
+				}
+				else
+				{
+					//delete from list middle
+					index->blk_prev->blk_next=index->blk_next;
+					index->blk_next->blk_prev=index->blk_prev;
+				}
+				free(index);
 			
-			// build a new blk and add to the head of regular cache
-			block=(struct blk_info *)malloc(sizeof(struct blk_info)); 
-			alloc_assert(block,"block");
-			memset(block,0,sizeof(struct blk_info));
+				// build a new blk and add to the head of regular cache
+				block=(struct blk_info *)malloc(sizeof(struct blk_info)); 
+				alloc_assert(block,"block");
+				memset(block,0,sizeof(struct blk_info));
 	
-			block->blkn=blkn;
-			block->state=state;
-			if(cache->blk_head_reg == NULL)
-			{
-				block->blk_prev = NULL;
-				block->blk_next = NULL;
-				cache->blk_head_reg = block;
-				cache->blk_tail_reg = block;
-			}
-			else
-			{
-				block->blk_prev = NULL;
-				block->blk_next = cache->blk_head_reg;
-				cache->blk_head_reg->blk_prev = block;
-				cache->blk_head_reg = block;
-			}
+				block->blkn = blkn;
+				block->setn = blkn/65536;
+				block->state = state;
+				
+				if(cache->blk_head_reg == NULL)
+				{
+					block->blk_prev = NULL;
+					block->blk_next = NULL;
+					cache->blk_head_reg = block;
+					cache->blk_tail_reg = block;
+				}
+				else
+				{
+					block->blk_prev = NULL;
+					block->blk_next = cache->blk_head_reg;
+					cache->blk_head_reg->blk_prev = block;
+					cache->blk_head_reg = block;
+				}
 			
-			//update the size of the corresponding set.
-			
-			
-			return SUCCESS;
-		}//if
-		index = index->blk_next;
+				return SUCCESS;
+			}//if
+			index = index->blk_next;
+		}
 	}
 	return FAILURE;
 }
@@ -505,8 +634,10 @@ int cache_blk_zac_gst(struct cache_info *cache,unsigned int blkn,unsigned int st
 			alloc_assert(block,"block");
 			memset(block,0,sizeof(struct blk_info));
 	
-			block->blkn=blkn;
-			block->state=state;
+			block->blkn = blkn;
+			block->setn = blkn/65536;
+			block->state = state;
+			
 			if(cache->blk_head_reg == NULL)
 			{
 				block->blk_prev = NULL;
@@ -533,8 +664,10 @@ int cache_blk_zac_gst(struct cache_info *cache,unsigned int blkn,unsigned int st
 	alloc_assert(block,"block");
 	memset(block,0,sizeof(struct blk_info));
 	
-	block->blkn=blkn;
-	block->state=state;
+	block->blkn = blkn;
+	block->setn = blkn/65536;
+	block->state = state;
+			
 	if(cache->blk_head_gst == NULL)
 	{
 		block->blk_prev = NULL;
@@ -560,16 +693,26 @@ void cache_print_zac(struct cache_info *cache)
 	
 	printf("------------------------\n");
 	printf("Cache Max blk Reg = %d\n",cache->blk_max_reg);
+	printf("Cache Max blk Evt = %d\n",cache->blk_max_evt);
 	printf("Cache Max blk Gst = %d\n",cache->blk_max_gst);
+	printf("----\n");
 	printf("Cache Now blk Reg = %d\n",cache->blk_now_reg);
+	printf("Cache Now blk Evt = %d\n",cache->blk_now_evt);
 	printf("Cache Now blk Gst = %d\n",cache->blk_now_gst);
+	printf("----\n");
 	printf("Cache Trc blk = %d\n",cache->blk_trc_all);
-	printf("Cache Hit all = %d\n",(cache->hit_red_reg + cache->hit_wrt_reg));
-	printf("Cache Hit Red = %d\n",cache->hit_red_reg);
-	printf("Cache Hit Wrt = %d\n",cache->hit_wrt_reg);
+	printf("Cache Hit all = %d\n",(cache->hit_red_reg+cache->hit_wrt_reg+cache->hit_red_evt+cache->hit_wrt_evt));
+	printf("Cache Hit Red = %d\n",(cache->hit_red_reg+cache->hit_red_evt));
+	printf("Cache Hit Wrt = %d\n",(cache->hit_wrt_reg+cache->hit_wrt_evt));
+	printf("----\n");
 	printf("Cache Hit all Reg = %d\n",(cache->hit_red_reg + cache->hit_wrt_reg));
 	printf("Cache Hit Red Reg = %d\n",cache->hit_red_reg);
 	printf("Cache Hit Wrt Reg = %d\n",cache->hit_wrt_reg);
+	printf("----\n");
+	printf("Cache Hit all Evt = %d\n",(cache->hit_red_evt + cache->hit_wrt_evt));
+	printf("Cache Hit Red Evt = %d\n",cache->hit_red_evt);
+	printf("Cache Hit Wrt Evt = %d\n",cache->hit_wrt_evt);
+	printf("----\n");
 	printf("Cache Hit all Gst = %d\n",(cache->hit_red_gst + cache->hit_wrt_gst));
 	printf("Cache Hit Red Gst = %d\n",cache->hit_red_gst);
 	printf("Cache Hit Wrt Gst = %d\n",cache->hit_wrt_gst);
@@ -578,6 +721,13 @@ void cache_print_zac(struct cache_info *cache)
 	
 	fprintf(cache->file_out,"-----Regular Cache----- \n");
 	index=cache->blk_head_reg;
+	while(index)
+	{
+		fprintf(cache->file_out,"%-5d \n",index->blkn);
+		index=index->blk_next;
+	}
+	fprintf(cache->file_out,"-----Evicting Cache----- \n");
+	index=cache->blk_head_evt;
 	while(index)
 	{
 		fprintf(cache->file_out,"%-5d \n",index->blkn);
