@@ -1,6 +1,6 @@
 #include "cache.h"
 
-void cache_init_zac(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc)
+void zac_init(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc)
 {
 	int i;
 	
@@ -8,6 +8,8 @@ void cache_init_zac(struct cache_info *cache,char *trace, char *output, char *sm
 	cache->size_cache=128;	//MB
 	
 	cache->blk_trc_all=0;
+	cache->blk_trc_red=0;
+	cache->blk_trc_wrt=0;
 	
 	cache->blk_max_all=1024*cache->size_cache/cache->size_block;
 	cache->blk_max_reg=cache->blk_max_all*0.8;
@@ -32,7 +34,7 @@ void cache_init_zac(struct cache_info *cache,char *trace, char *output, char *sm
 	cache->hit_wrt_gst=0;
 		
 	cache->req=(struct req_info *)malloc(sizeof(struct req_info));
-	alloc_assert(cache->req,"cache->req");
+	cache_alloc_assert(cache->req,"cache->req");
 	memset(cache->req,0,sizeof(struct req_info));
 
     cache->blk_head_reg=NULL;
@@ -142,7 +144,7 @@ int zac_dedupe_blk_gst(struct cache_info *cache,unsigned int blkn)
 					cache->blk_head_gst = cache->blk_head_gst->blk_next;
 					cache->blk_head_gst->blk_prev = NULL;
 				}
-				else	// head == tail
+				else// head == tail
 				{
 					cache->blk_head_gst = NULL;
 					cache->blk_tail_gst = NULL;
@@ -175,8 +177,8 @@ void zac_delete_tail_set_evt(struct cache_info *cache)
 	unsigned int i=0,setn,max_size;
 	
 	setn = zac_find_max(cache);	
-	max_size=cache->set_size[setn];
-	printf("+++++++The size of evicted set is %d ++++++++\n",max_size);
+	max_size = cache->set_size[setn];
+	//printf("+++++++The size of evicted set is %d ++++++++\n",max_size);
 	
 	index = cache->blk_head_evt;
 	while(index)
@@ -192,7 +194,7 @@ void zac_delete_tail_set_evt(struct cache_info *cache)
 					cache->blk_head_evt = cache->blk_head_evt->blk_next;
 					cache->blk_head_evt->blk_prev = NULL;
 				}
-				else	// head == tail
+				else// head == tail
 				{
 					cache->blk_head_evt = NULL;
 					cache->blk_tail_evt = NULL;
@@ -253,32 +255,23 @@ int zac_find_max(struct cache_info* cache)
 }
 
 
-void cache_zac(struct cache_info *cache)
+void zac_main(struct cache_info *cache)
 {
 	struct blk_info *block;
-	
-	cache->blk_trc_all += cache->req->size;
 	
 	if(cache->req->type == WRITE)
 	{
 		while(cache->req->size)
 		{
-			if(cache_blk_zac_reg(cache,cache->req->blkn,WRITE) == SUCCESS)
+			if(zac_check_reg(cache,cache->req->blkn,WRITE) == SUCCESS)
 			{
 				cache->hit_wrt_reg++;
 			}
-			else if(cache_blk_zac_evt(cache,cache->req->blkn,WRITE) == SUCCESS) 
+			else if(zac_check_evt(cache,cache->req->blkn,WRITE) == SUCCESS) 
 			{
 				//move from evicting cache to regular cache
 				cache->hit_wrt_evt++;
-				
 				cache->blk_now_evt--;
-				if(cache->blk_now_evt < 0)
-				{
-					printf("+++a blk is hit in EVT cache, but it doesn't exist ?!+++++\n");
-					exit(-1);
-				}
-				
 				cache->set_size[cache->req->blkn/65536]--;
 				if(cache->set_size[cache->req->blkn/65536] < 0)
 				{
@@ -301,18 +294,11 @@ void cache_zac(struct cache_info *cache)
 			}
 			else
 			{
-				if(cache_blk_zac_gst(cache,cache->req->blkn,WRITE) == SUCCESS)
+				if(zac_check_gst(cache,cache->req->blkn,WRITE) == SUCCESS)
 				{
 					//move this block from ghost cache to regular cache
 					cache->hit_wrt_gst++;
-					
 					cache->blk_now_gst--;
-					if(cache->blk_now_gst < 0)
-					{
-						printf("+++a blk is hit in GST cache, but it doesn't exist ?!+++++\n");
-						exit(-1);
-					}
-					
 					cache->blk_now_reg++;
 					while(cache->blk_now_reg > cache->blk_max_reg)
 					{
@@ -332,7 +318,7 @@ void cache_zac(struct cache_info *cache)
 					//cache its real data to evicting cache
 					// build a new blk and add to the head of evt cache
 					block=(struct blk_info *)malloc(sizeof(struct blk_info)); 
-					alloc_assert(block,"block");
+					cache_alloc_assert(block,"block");
 					memset(block,0,sizeof(struct blk_info));
 					
 					block->blkn = cache->req->blkn;
@@ -364,7 +350,6 @@ void cache_zac(struct cache_info *cache)
 					{
 						zac_delete_tail_set_evt(cache);
 					}
-					
 				}
 			}//else
 			cache->req->size--;
@@ -375,22 +360,16 @@ void cache_zac(struct cache_info *cache)
 	{
 		while(cache->req->size)
 		{
-			if(cache_blk_zac_reg(cache,cache->req->blkn,READ) == SUCCESS)
+			if(zac_check_reg(cache,cache->req->blkn,READ) == SUCCESS)
 			{
 				cache->hit_red_reg++;
 			}
-			else if(cache_blk_zac_evt(cache,cache->req->blkn,READ) == SUCCESS) 
+			else if(zac_check_evt(cache,cache->req->blkn,READ) == SUCCESS) 
 			{
 				//move from evicting cache to regular cache
 				cache->hit_red_evt++;
-				
 				cache->blk_now_evt--;
-				if(cache->blk_now_evt < 0)
-				{
-					printf("+++a blk is read hit in EVT cache, but it doesn't exist ?!+++++\n");
-					exit(-1);
-				}
-				
+								
 				cache->set_size[cache->req->blkn/65536]--;
 				if(cache->set_size[cache->req->blkn/65536] < 0)
 				{
@@ -413,18 +392,11 @@ void cache_zac(struct cache_info *cache)
 			}
 			else
 			{
-				if(cache_blk_zac_gst(cache,cache->req->blkn,READ) == SUCCESS)
+				if(zac_check_gst(cache,cache->req->blkn,READ) == SUCCESS)
 				{
 					//move this block from ghost cache to regular cache
 					cache->hit_red_gst++;
-					
 					cache->blk_now_gst--;
-					if(cache->blk_now_gst < 0)
-					{
-						printf("+++a blk is hit in GST cache, but it doesn't exist ?!+++++\n");
-						exit(-1);
-					}
-					
 					cache->blk_now_reg++;
 					while(cache->blk_now_reg > cache->blk_max_reg)
 					{
@@ -458,11 +430,11 @@ For Regular Cache
 	hit: search, delete, insert to head
 	miss: go to check evicting cache
 **/
-int cache_blk_zac_reg(struct cache_info *cache,unsigned int blkn,unsigned int state)
+int zac_check_reg(struct cache_info *cache,unsigned int blkn,unsigned int state)
 {
 	struct blk_info *index;
-	index = cache->blk_head_reg;
 	
+	index = cache->blk_head_reg;
 	while(index)
 	{
 		if(index->blkn == blkn)
@@ -507,7 +479,7 @@ For Evicting Cache
 	hit: search, delete, insert to regular cache's head
 	miss: go to check ghost cache
 **/
-int cache_blk_zac_evt(struct cache_info *cache,unsigned int blkn,unsigned int state)
+int zac_check_evt(struct cache_info *cache,unsigned int blkn,unsigned int state)
 {
 	struct blk_info *index;
 	struct blk_info *block;
@@ -555,7 +527,7 @@ int cache_blk_zac_evt(struct cache_info *cache,unsigned int blkn,unsigned int st
 			
 				// build a new blk and add to the head of regular cache
 				block=(struct blk_info *)malloc(sizeof(struct blk_info)); 
-				alloc_assert(block,"block");
+				cache_alloc_assert(block,"block");
 				memset(block,0,sizeof(struct blk_info));
 	
 				block->blkn = blkn;
@@ -590,7 +562,7 @@ For Ghost Cache
 	hit: search, delete, insert to regular cache
 	miss: build a new blk, insert to the head of ghost cache
 **/
-int cache_blk_zac_gst(struct cache_info *cache,unsigned int blkn,unsigned int state)
+int zac_check_gst(struct cache_info *cache,unsigned int blkn,unsigned int state)
 {
 	struct blk_info *index;
 	struct blk_info *block;
@@ -609,7 +581,7 @@ int cache_blk_zac_gst(struct cache_info *cache,unsigned int blkn,unsigned int st
 					cache->blk_head_gst = cache->blk_head_gst->blk_next;
 					cache->blk_head_gst->blk_prev = NULL;
 				}
-				else	// head == tail
+				else// head == tail
 				{
 					cache->blk_head_gst = NULL;
 					cache->blk_tail_gst = NULL;
@@ -631,7 +603,7 @@ int cache_blk_zac_gst(struct cache_info *cache,unsigned int blkn,unsigned int st
 			
 			// build a new blk and add to the head of regular cache
 			block=(struct blk_info *)malloc(sizeof(struct blk_info)); 
-			alloc_assert(block,"block");
+			cache_alloc_assert(block,"block");
 			memset(block,0,sizeof(struct blk_info));
 	
 			block->blkn = blkn;
@@ -661,7 +633,7 @@ int cache_blk_zac_gst(struct cache_info *cache,unsigned int blkn,unsigned int st
 	//insert to the head of ghost cache
 	// build a new blk and add to head
 	block=(struct blk_info *)malloc(sizeof(struct blk_info)); 
-	alloc_assert(block,"block");
+	cache_alloc_assert(block,"block");
 	memset(block,0,sizeof(struct blk_info));
 	
 	block->blkn = blkn;
@@ -687,23 +659,28 @@ int cache_blk_zac_gst(struct cache_info *cache,unsigned int blkn,unsigned int st
 
 
 
-void cache_print_zac(struct cache_info *cache)
+void zac_print(struct cache_info *cache)
 {
-	struct blk_info *index;
-	
-	printf("------------------------\n");
+	printf("----------------------------------------------\n");
+	printf("----------------------------------------------\n");
 	printf("Cache Max blk Reg = %d\n",cache->blk_max_reg);
 	printf("Cache Max blk Evt = %d\n",cache->blk_max_evt);
 	printf("Cache Max blk Gst = %d\n",cache->blk_max_gst);
-	printf("----\n");
 	printf("Cache Now blk Reg = %d\n",cache->blk_now_reg);
 	printf("Cache Now blk Evt = %d\n",cache->blk_now_evt);
 	printf("Cache Now blk Gst = %d\n",cache->blk_now_gst);
-	printf("----\n");
-	printf("Cache Trc blk = %d\n",cache->blk_trc_all);
-	printf("Cache Hit all = %d\n",(cache->hit_red_reg+cache->hit_wrt_reg+cache->hit_red_evt+cache->hit_wrt_evt));
-	printf("Cache Hit Red = %d\n",(cache->hit_red_reg+cache->hit_red_evt));
-	printf("Cache Hit Wrt = %d\n",(cache->hit_wrt_reg+cache->hit_wrt_evt));
+	printf("Cache Now set Evt = %d\n",cache->set_now_evt);
+	printf("Cache Trc all blk = %d\n",cache->blk_trc_all);
+	printf("Cache Trc red blk = %d\n",cache->blk_trc_red);
+	printf("Cache Trc wrt blk = %d\n",cache->blk_trc_wrt);
+	printf("------\n");
+	printf("Cache Hit All = %d || All Hit Ratio = %Lf \n",
+			(cache->hit_red_reg+cache->hit_wrt_reg+cache->hit_red_evt+cache->hit_wrt_evt),
+			(long double)(cache->hit_red_reg+cache->hit_wrt_reg+cache->hit_red_evt+cache->hit_wrt_evt)/(long double)cache->blk_trc_all);
+	printf("Cache Hit Red = %d || Red Hit Ratio = %Lf\n",
+			(cache->hit_red_reg+cache->hit_red_evt),(long double)(cache->hit_red_reg+cache->hit_red_evt)/(long double)cache->blk_trc_red);
+	printf("Cache Hit Wrt = %d || Wrt Hit Ratio = %Lf\n",
+			(cache->hit_wrt_reg+cache->hit_wrt_evt),(long double)(cache->hit_wrt_reg+cache->hit_wrt_evt)/(long double)cache->blk_trc_wrt);
 	printf("----\n");
 	printf("Cache Hit all Reg = %d\n",(cache->hit_red_reg + cache->hit_wrt_reg));
 	printf("Cache Hit Red Reg = %d\n",cache->hit_red_reg);
@@ -718,26 +695,4 @@ void cache_print_zac(struct cache_info *cache)
 	printf("Cache Hit Wrt Gst = %d\n",cache->hit_wrt_gst);
 	
 	printf("------------------------\n");
-	
-	fprintf(cache->file_out,"-----Regular Cache----- \n");
-	index=cache->blk_head_reg;
-	while(index)
-	{
-		fprintf(cache->file_out,"%-5d \n",index->blkn);
-		index=index->blk_next;
-	}
-	fprintf(cache->file_out,"-----Evicting Cache----- \n");
-	index=cache->blk_head_evt;
-	while(index)
-	{
-		fprintf(cache->file_out,"%-5d \n",index->blkn);
-		index=index->blk_next;
-	}
-	fprintf(cache->file_out,"-----Ghost Cache----- \n");
-	index=cache->blk_head_gst;
-	while(index)
-	{
-		fprintf(cache->file_out,"%-5d \n",index->blkn);
-		index=index->blk_next;
-	}
 }

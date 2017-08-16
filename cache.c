@@ -6,21 +6,21 @@ void cache_run_lru(char *trace, char *output, char *smrTrc, char *ssdTrc)
 	struct cache_info *cache;
 	
 	cache=(struct cache_info *)malloc(sizeof(struct cache_info));
-	alloc_assert(cache,"cache");
+	cache_alloc_assert(cache,"cache");
 	memset(cache,0,sizeof(struct cache_info));
 	
-	cache_init_lru(cache,trace,output,smrTrc,ssdTrc);
-	while(get_req(cache) != FAILURE)
+	lru_init(cache,trace,output,smrTrc,ssdTrc);
+	while(cache_get_req(cache) != FAILURE)
 	{
-		cache_lru(cache);
+		lru_main(cache);
 		
 		i++;
-		if(i%100000==0)
+		if(i%500000==0)
 		{
 			printf("LRU is Handling %d \n",i);
 		}
 	}
-	cache_print_lru(cache);
+	lru_print(cache);
 	cache_free(cache);
 }
 
@@ -30,21 +30,21 @@ void cache_run_larc(char *trace, char *output, char *smrTrc, char *ssdTrc)
 	struct cache_info *cache;
 	
 	cache=(struct cache_info *)malloc(sizeof(struct cache_info));
-	alloc_assert(cache,"cache");
+	cache_alloc_assert(cache,"cache");
 	memset(cache,0,sizeof(struct cache_info));
 	
-	cache_init_larc(cache,trace,output,smrTrc,ssdTrc);
-	while(get_req(cache) != FAILURE)
+	larc_init(cache,trace,output,smrTrc,ssdTrc);
+	while(cache_get_req(cache) != FAILURE)
 	{
-		cache_larc(cache);
+		larc_main(cache);
 		
 		i++;
-		if(i%100000==0)
+		if(i%500000==0)
 		{
 			printf("LARC is Handling %d \n",i);
 		}
 	}
-	cache_print_larc(cache);
+	larc_print(cache);
 	cache_free(cache);
 }
 
@@ -55,64 +55,22 @@ void cache_run_zac(char *trace, char *output, char *smrTrc, char *ssdTrc)
 	struct cache_info *cache;
 	
 	cache=(struct cache_info *)malloc(sizeof(struct cache_info));
-	alloc_assert(cache,"cache");
+	cache_alloc_assert(cache,"cache");
 	memset(cache,0,sizeof(struct cache_info));
 	
-	cache_init_zac(cache,trace,output,smrTrc,ssdTrc);
-	while(get_req(cache) != FAILURE)
+	zac_init(cache,trace,output,smrTrc,ssdTrc);
+	while(cache_get_req(cache) != FAILURE)
 	{
-		cache_zac(cache);
+		zac_main(cache);
 		
 		i++;
-		if(i%100000==0)
+		if(i%500000==0)
 		{
 			printf("ZAC is Handling %d \n",i);
 		}
 	}
-	cache_print_zac(cache);
+	zac_print(cache);
 	cache_free(cache);
-}
-
-void cache_delete_tail_blk_reg(struct cache_info *cache)
-{
-	struct blk_info *block;
-	
-	block = cache->blk_tail_reg;
-	if(block != cache->blk_head_reg)
-	{
-		cache->blk_tail_reg = cache->blk_tail_reg->blk_prev;
-		cache->blk_tail_reg->blk_next = NULL;
-	}
-	else
-	{
-		cache->blk_tail_reg = NULL;
-		cache->blk_head_reg = NULL;
-	}
-	if(block->state == DIRTY)
-	{
-		//A dirty blocks is evicted
-		
-	}
-	free(block);
-}
-
-void cache_delete_tail_blk_gst(struct cache_info *cache)
-{
-	struct blk_info *block;
-	
-	block = cache->blk_tail_gst;
-	if(block != cache->blk_head_gst)
-	{
-		cache->blk_tail_gst = cache->blk_tail_gst->blk_prev;
-		cache->blk_tail_gst->blk_next = NULL;
-	}
-	else
-	{
-		cache->blk_tail_gst = NULL;
-		cache->blk_head_gst = NULL;
-	}
-	
-	free(block);
 }
 
 void cache_free(struct cache_info *cache)
@@ -154,7 +112,7 @@ void cache_free(struct cache_info *cache)
 	free(cache);
 }
 
-int get_req(struct cache_info *cache)
+int cache_get_req(struct cache_info *cache)
 {
 	long long blkn;
 	unsigned int size;
@@ -172,11 +130,21 @@ int get_req(struct cache_info *cache)
 	cache->req->type=type;
 	cache->req->blkn=blkn;
 	cache->req->size=size;
+	
+	cache->blk_trc_all += size;
+	if(type == READ)
+	{
+		cache->blk_trc_red += cache->req->size;
+	}
+	else
+	{
+		cache->blk_trc_wrt += cache->req->size;
+	}	
 
 	return SUCCESS;
 }
 
-void alloc_assert(void *p,char *s)
+void cache_alloc_assert(void *p,char *s)
 {
 	if(p!=NULL)
 	{

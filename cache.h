@@ -19,6 +19,8 @@ struct cache_info{
 	unsigned int size_cache;
 	
 	unsigned int blk_trc_all;	//trace footprint
+	unsigned int blk_trc_red;
+	unsigned int blk_trc_wrt;
 	
 	unsigned int blk_max_all;	//cache capacity
 	unsigned int blk_max_reg;	//regular cache
@@ -91,41 +93,37 @@ struct blk_info{
 void cache_run_lru(char *trace, char *output, char *smrTrc, char *ssdTrc);
 void cache_run_larc(char *trace, char *output, char *smrTrc, char *ssdTrc);
 void cache_run_zac(char *trace, char *output, char *smrTrc, char *ssdTrc);
-void cache_delete_tail_blk_reg(struct cache_info *cache);
-void cache_delete_tail_blk_gst(struct cache_info *cache);
 void cache_free(struct cache_info *cache);
-int get_req(struct cache_info *cache);
-void alloc_assert(void *p,char *s);
+int  cache_get_req(struct cache_info *cache);
+void cache_alloc_assert(void *p,char *s);
 
 //lru.c
-void cache_init_lru(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc);
-void cache_lru(struct cache_info *cache);
-int cache_blk_lru(struct cache_info *cache,unsigned int blkn,unsigned int state);
-void cache_print_lru(struct cache_info *cache);
+void lru_init(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc);
+void lru_main(struct cache_info *cache);
+int  lru_check_reg(struct cache_info *cache,unsigned int blkn,unsigned int state);
+void lru_delete_tail_blk_reg(struct cache_info *cache);
+void lru_print(struct cache_info *cache);
 
 //larc
-void cache_init_larc(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc);
-void cache_larc(struct cache_info *cache);
-int cache_blk_larc_reg(struct cache_info *cache,unsigned int blkn,unsigned int state);
-int cache_blk_larc_gst(struct cache_info *cache,unsigned int blkn,unsigned int state);
-void cache_print_larc(struct cache_info *cache);
+void larc_init(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc);
+void larc_main(struct cache_info *cache);
+int  larc_check_reg(struct cache_info *cache,unsigned int blkn,unsigned int state);
+int  larc_check_gst(struct cache_info *cache,unsigned int blkn,unsigned int state);
+void larc_delete_tail_blk_reg(struct cache_info *cache);
+void larc_delete_tail_blk_gst(struct cache_info *cache);
+void larc_print(struct cache_info *cache);
 
 //zac
-void cache_init_zac(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc);
+void zac_init(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc);
+void zac_main(struct cache_info *cache);
+int  zac_check_reg(struct cache_info *cache,unsigned int blkn,unsigned int state);
+int  zac_check_evt(struct cache_info *cache,unsigned int blkn,unsigned int state);
+int  zac_check_gst(struct cache_info *cache,unsigned int blkn,unsigned int state);
 void zac_delete_tail_blk_reg(struct cache_info *cache);
 void zac_delete_tail_blk_gst(struct cache_info *cache);
-int zac_dedupe_blk_gst(struct cache_info *cache,unsigned int blkn);
+int  zac_dedupe_blk_gst(struct cache_info *cache,unsigned int blkn);
 void zac_delete_tail_set_evt(struct cache_info *cache);
-int zac_find_max(struct cache_info* cache);
-void cache_zac(struct cache_info *cache);
-int cache_blk_zac_reg(struct cache_info *cache,unsigned int blkn,unsigned int state);
-int cache_blk_zac_evt(struct cache_info *cache,unsigned int blkn,unsigned int state);
-int cache_blk_zac_gst(struct cache_info *cache,unsigned int blkn,unsigned int state);
-void cache_print_zac(struct cache_info *cache);
-
-
-
-
-
+int  zac_find_max(struct cache_info* cache);
+void zac_print(struct cache_info *cache);
 
 #endif
