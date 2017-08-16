@@ -22,6 +22,8 @@ struct cache_info{
 	unsigned int blk_trc_red;
 	unsigned int blk_trc_wrt;
 	
+	unsigned int blk_ssd_wrt;
+	
 	unsigned int blk_max_all;	//cache capacity
 	unsigned int blk_max_reg;	//regular cache
 	unsigned int blk_max_evt;	//evicting cache
@@ -82,7 +84,7 @@ struct set_info{
 };
 
 struct blk_info{
-	unsigned int blkn;	//block number
+	long long blkn;		//block number
 	unsigned int setn;	// set number
 	unsigned int state; // clean or dirty
 	struct blk_info *blk_prev;
