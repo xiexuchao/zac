@@ -1,6 +1,6 @@
 #include "cache.h"
 
-void cache_run_lru(char *trace, char *output, char *smrTrc, char *ssdTrc)
+void cache_run_lru(char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize)
 {
 	int i=0;
 	struct cache_info *cache;
@@ -9,22 +9,22 @@ void cache_run_lru(char *trace, char *output, char *smrTrc, char *ssdTrc)
 	cache_alloc_assert(cache,"cache");
 	memset(cache,0,sizeof(struct cache_info));
 	
-	lru_init(cache,trace,output,smrTrc,ssdTrc);
+	lru_init(cache,trace,output,smrTrc,ssdTrc,ssdsize);
 	while(cache_get_req(cache) != FAILURE)
 	{
 		lru_main(cache);
 		
 		i++;
-		if(i%500000==0)
+		if(i%100000==0)
 		{
-			printf("LRU is Handling %d \n",i);
+			printf("LRU is Handling %d %s ssdsize=%d \n",i,trace,ssdsize);
 		}
 	}
 	lru_print(cache);
 	cache_free(cache);
 }
 
-void cache_run_larc(char *trace, char *output, char *smrTrc, char *ssdTrc)
+void cache_run_larc(char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize)
 {
 	int i=0;
 	struct cache_info *cache;
@@ -39,9 +39,9 @@ void cache_run_larc(char *trace, char *output, char *smrTrc, char *ssdTrc)
 		larc_main(cache);
 		
 		i++;
-		if(i%500000==0)
+		if(i%100000==0)
 		{
-			printf("LARC is Handling %d \n",i);
+			printf("LARC is Handling %d %s ssdsize=%d \n",i,trace,ssdsize);
 		}
 	}
 	larc_print(cache);
@@ -49,7 +49,7 @@ void cache_run_larc(char *trace, char *output, char *smrTrc, char *ssdTrc)
 }
 
 
-void cache_run_zac(char *trace, char *output, char *smrTrc, char *ssdTrc)
+void cache_run_zac(char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize)
 {
 	int i=0;
 	struct cache_info *cache;
@@ -64,9 +64,9 @@ void cache_run_zac(char *trace, char *output, char *smrTrc, char *ssdTrc)
 		zac_main(cache);
 		
 		i++;
-		if(i%500000==0)
+		if(i%100000==0)
 		{
-			printf("ZAC is Handling %d \n",i);
+			printf("ZAC is Handling %d %s ssdsize=%d \n",i,trace,ssdsize);
 		}
 	}
 	zac_print(cache);

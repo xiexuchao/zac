@@ -1,11 +1,11 @@
 #include "cache.h"
 
-void zac_init(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc)
+void zac_init(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize)
 {
 	int i;
 	
-	cache->size_block=4;	//KB
-	cache->size_cache=128;	//MB
+	cache->size_block=4;		//KB
+	cache->size_cache=ssdsize;	//MB
 	
 	cache->blk_trc_all=0;
 	cache->blk_trc_red=0;

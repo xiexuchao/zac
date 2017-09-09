@@ -92,22 +92,22 @@ struct blk_info{
 };
 
 //cache.c
-void cache_run_lru(char *trace, char *output, char *smrTrc, char *ssdTrc);
-void cache_run_larc(char *trace, char *output, char *smrTrc, char *ssdTrc);
-void cache_run_zac(char *trace, char *output, char *smrTrc, char *ssdTrc);
+void cache_run_lru(char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize);
+void cache_run_larc(char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize);
+void cache_run_zac(char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize);
 void cache_free(struct cache_info *cache);
 int  cache_get_req(struct cache_info *cache);
 void cache_alloc_assert(void *p,char *s);
 
 //lru.c
-void lru_init(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc);
+void lru_init(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize);
 void lru_main(struct cache_info *cache);
 int  lru_check_reg(struct cache_info *cache,unsigned int blkn,unsigned int state);
 void lru_delete_tail_blk_reg(struct cache_info *cache);
 void lru_print(struct cache_info *cache);
 
 //larc
-void larc_init(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc);
+void larc_init(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize);
 void larc_main(struct cache_info *cache);
 int  larc_check_reg(struct cache_info *cache,unsigned int blkn,unsigned int state);
 int  larc_check_gst(struct cache_info *cache,unsigned int blkn,unsigned int state);
@@ -116,7 +116,7 @@ void larc_delete_tail_blk_gst(struct cache_info *cache);
 void larc_print(struct cache_info *cache);
 
 //zac
-void zac_init(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc);
+void zac_init(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize);
 void zac_main(struct cache_info *cache);
 int  zac_check_reg(struct cache_info *cache,unsigned int blkn,unsigned int state);
 int  zac_check_evt(struct cache_info *cache,unsigned int blkn,unsigned int state);
