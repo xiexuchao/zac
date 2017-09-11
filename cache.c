@@ -33,7 +33,7 @@ void cache_run_larc(char *trace, char *output, char *smrTrc, char *ssdTrc, unsig
 	cache_alloc_assert(cache,"cache");
 	memset(cache,0,sizeof(struct cache_info));
 	
-	larc_init(cache,trace,output,smrTrc,ssdTrc);
+	larc_init(cache,trace,output,smrTrc,ssdTrc,ssdsize);
 	while(cache_get_req(cache) != FAILURE)
 	{
 		larc_main(cache);
@@ -58,7 +58,7 @@ void cache_run_zac(char *trace, char *output, char *smrTrc, char *ssdTrc, unsign
 	cache_alloc_assert(cache,"cache");
 	memset(cache,0,sizeof(struct cache_info));
 	
-	zac_init(cache,trace,output,smrTrc,ssdTrc);
+	zac_init(cache,trace,output,smrTrc,ssdTrc,ssdsize);
 	while(cache_get_req(cache) != FAILURE)
 	{
 		zac_main(cache);
