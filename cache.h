@@ -23,6 +23,7 @@ struct cache_info{
 	unsigned int blk_trc_wrt;
 	
 	unsigned int blk_ssd_wrt;
+	unsigned int blk_inn_wrt;
 	
 	unsigned int blk_max_all;	//cache capacity
 	unsigned int blk_max_reg;	//regular cache

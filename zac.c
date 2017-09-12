@@ -12,7 +12,8 @@ void zac_init(struct cache_info *cache,char *trace, char *output, char *smrTrc, 
 	cache->blk_trc_wrt=0;
 	
 	cache->blk_ssd_wrt=0;
-	
+	cache->blk_inn_wrt=0;
+		
 	cache->blk_max_all=1024*cache->size_cache/cache->size_block;
 	cache->blk_max_reg=cache->blk_max_all*0.8;
 	cache->blk_max_evt=cache->blk_max_all*0.2;
@@ -182,7 +183,7 @@ void zac_delete_tail_set_evt(struct cache_info *cache)
 	
 	setn = zac_find_max(cache);	
 	max_size = cache->set_size[setn];
-	printf("+++++++The size of evicted set %d is %d ++++++++\n",setn, max_size);
+	//printf("+++++++The size of evicted set %d is %d ++++++++\n",setn, max_size);
 	
 	index = cache->blk_head_evt;
 	while(index)
@@ -331,10 +332,11 @@ void zac_main(struct cache_info *cache)
 				}
 				else//insert to the head of ghost cache
 				{
-					//*****************************************************
-					//can be eliminated by innocous NSW aware ghost caching
-					//*****************************************************
+					//***********************************************************************************
+					//can be eliminated by innocous NSW aware ghost caching******************************
+					//***********************************************************************************
 					cache->blk_ssd_wrt++;
+					cache->blk_inn_wrt++;
 					
 					cache->blk_now_gst++;
 					while(cache->blk_now_gst > cache->blk_max_gst)
@@ -343,9 +345,9 @@ void zac_main(struct cache_info *cache)
 						cache->blk_now_gst--;
 					}
 					
-					//*****************************************************
-					//can be eliminated by innocous NSW aware ghost caching
-					//*****************************************************
+					//***********************************************************************************
+					//can be eliminated by innocous NSW aware ghost caching******************************
+					//***********************************************************************************
 					fprintf(cache->file_ssd,"%lld 1 %d\n",cache->req->blkn%cache->blk_max_all,WRITE);
 					
 					//cache its real data to evicting cache
@@ -382,6 +384,7 @@ void zac_main(struct cache_info *cache)
 					while(cache->blk_now_evt > cache->blk_max_evt)
 					{
 						zac_delete_tail_set_evt(cache);
+						//cache->set_now_evt--;
 					}
 				}
 			}//else
@@ -713,6 +716,7 @@ void zac_print(struct cache_info *cache)
 	printf("Cache Trc red blk = %d\n",cache->blk_trc_red);
 	printf("Cache Trc wrt blk = %d\n",cache->blk_trc_wrt);
 	printf("Write Traffic SSD = %d\n",cache->blk_ssd_wrt);
+	printf("Write InnBlk  SSD = %d\n",cache->blk_inn_wrt);
 	printf("------\n");
 	printf("Cache Hit All = %d || All Hit Ratio = %Lf \n",
 			(cache->hit_red_reg+cache->hit_wrt_reg+cache->hit_red_evt+cache->hit_wrt_evt),
