@@ -45,7 +45,7 @@ void most_init(struct cache_info *cache,char *trace, char *output, char *smrTrc,
     cache->file_ssd=fopen(cache->filename_ssd,"w");    
 }
 
-void most_delete_tail_set_evt(struct cache_info *cache)
+void most_delete_max_set_evt(struct cache_info *cache)
 {
 	struct blk_info *index;
 	unsigned int i=0,setn,max_size;
@@ -133,6 +133,8 @@ int most_find_max(struct cache_info* cache)
 
 void most_main(struct cache_info *cache)
 {
+	struct blk_info *block;
+	
 	if(cache->req->type == WRITE)
 	{
 		while(cache->req->size)
@@ -143,17 +145,50 @@ void most_main(struct cache_info *cache)
 				cache->hit_wrt_evt++;
 				fprintf(cache->file_ssd,"%lld 1 %d\n",cache->req->blkn%cache->blk_max_all,WRITE);
 			}
-			else//insert to the head of evtular cache
+			else//insert to the head of evicting cache
 			{
+				// build a new blk and add to the head of evicting cache
+				block=(struct blk_info *)malloc(sizeof(struct blk_info)); 
+				cache_alloc_assert(block,"block");
+				memset(block,0,sizeof(struct blk_info));
+	
+				block->blkn = cache->req->blkn;
+				block->setn = cache->req->blkn/65536;
+				block->state = cache->req->type;
+				
+				if(cache->blk_head_evt == NULL)
+				{
+					block->blk_prev = NULL;
+					block->blk_next = NULL;
+					cache->blk_head_evt = block;
+					cache->blk_tail_evt = block;
+				}
+				else
+				{
+					block->blk_prev = NULL;
+					block->blk_next = cache->blk_head_evt;
+					cache->blk_head_evt->blk_prev = block;
+					cache->blk_head_evt = block;
+				}
+		
+				if(cache->set_size[block->setn] == 0)
+				{
+					cache->set_now_evt++;
+				}
+				cache->set_size[block->setn]++;
+			
+						
 				cache->blk_ssd_wrt++;
 				cache->blk_now_evt++;
 				while(cache->blk_now_evt > cache->blk_max_evt)
 				{
-					most_delete_tail_set_evt(cache);
+					most_delete_max_set_evt(cache);
 					cache->blk_now_evt--;
 				}
 				fprintf(cache->file_ssd,"%lld 1 %d\n",cache->req->blkn%cache->blk_max_all,WRITE);
 			}
+			cache->req->size--;
+			cache->req->blkn++;
 		}//while
 	}//write
 	else if(cache->req->type == READ)
@@ -169,6 +204,8 @@ void most_main(struct cache_info *cache)
 			{
 				fprintf(cache->file_smr,"%lld 1 %d\n",cache->req->blkn,READ);				
 			}
+			cache->req->size--;
+			cache->req->blkn++;
 		}//while
 	}//read
 	else
@@ -186,11 +223,10 @@ For evicting Cache
 int most_check_evt(struct cache_info *cache,unsigned int blkn,unsigned int state)
 {
 	struct blk_info *index;
-	struct blk_info *block;
 	unsigned int setn = blkn/65536;
 	
 	if(cache->set_size[setn] == 0)
-	{
+	{	
 		return FAILURE;	
 	}
 	else
@@ -206,32 +242,7 @@ int most_check_evt(struct cache_info *cache,unsigned int blkn,unsigned int state
 		}
 	}
 	
-	if(cache->req->type == WRITE)
-	{
-		// build a new blk and add to the head of evicting cache
-		block=(struct blk_info *)malloc(sizeof(struct blk_info)); 
-		cache_alloc_assert(block,"block");
-		memset(block,0,sizeof(struct blk_info));
 	
-		block->blkn = blkn;
-		block->setn = blkn/65536;
-		block->state = state;
-				
-		if(cache->blk_head_evt == NULL)
-		{
-			block->blk_prev = NULL;
-			block->blk_next = NULL;
-			cache->blk_head_evt = block;
-			cache->blk_tail_evt = block;
-		}
-		else
-		{
-			block->blk_prev = NULL;
-			block->blk_next = cache->blk_head_evt;
-			cache->blk_head_evt->blk_prev = block;
-			cache->blk_head_evt = block;
-		}
-	}
 	
 	return FAILURE;
 }

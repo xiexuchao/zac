@@ -94,6 +94,7 @@ struct blk_info{
 //cache.c
 void cache_run_lru(char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize);
 void cache_run_larc(char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize);
+void cache_run_most(char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize);
 void cache_run_zac(char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize);
 void cache_free(struct cache_info *cache);
 int  cache_get_req(struct cache_info *cache);
@@ -119,7 +120,7 @@ void larc_print(struct cache_info *cache);
 void most_init(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize);
 void most_main(struct cache_info *cache);
 int  most_check_evt(struct cache_info *cache,unsigned int blkn,unsigned int state);
-void most_delete_tail_set_evt(struct cache_info *cache);
+void most_delete_max_set_evt(struct cache_info *cache);
 int  most_find_max(struct cache_info* cache);
 void most_print(struct cache_info *cache);
 
