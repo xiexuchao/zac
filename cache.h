@@ -35,6 +35,8 @@ struct cache_info{
 	
 	unsigned int set_now_evt;	//current sets in evicting cache
 	unsigned int set_size[30000];
+	unsigned int set_num_evt;	//total number of evicted sets
+	unsigned int set_blk_evt;	//total blocks of evicted sets
 	
 	unsigned int hit_red_reg;//cache hit times (blocks)
 	unsigned int hit_wrt_reg;

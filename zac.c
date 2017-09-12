@@ -27,6 +27,8 @@ void zac_init(struct cache_info *cache,char *trace, char *output, char *smrTrc, 
 	{
 		cache->set_size[i]=0;
 	}
+	cache->set_num_evt=0;
+	cache->set_blk_evt=0;
 	
 	cache->hit_red_reg=0;
 	cache->hit_wrt_reg=0;
@@ -175,12 +177,12 @@ int zac_dedupe_blk_gst(struct cache_info *cache,unsigned int blkn)
 
 void zac_delete_tail_set_evt(struct cache_info *cache)
 {
-	struct blk_info *index;
+	struct blk_info *index, *index2;
 	unsigned int i=0,setn,max_size;
 	
 	setn = zac_find_max(cache);	
 	max_size = cache->set_size[setn];
-	//printf("+++++++The size of evicted set is %d ++++++++\n",max_size);
+	printf("+++++++The size of evicted set is %d ++++++++\n",max_size);
 	
 	index = cache->blk_head_evt;
 	while(index)
@@ -216,17 +218,27 @@ void zac_delete_tail_set_evt(struct cache_info *cache)
 			}
 			
 			fprintf(cache->file_smr,"%lld 1 %d\n",index->blkn,WRITE);
-			free(index);
 			i++;
 			cache->blk_now_evt--;
 			cache->set_size[setn]--;
+			index2 = index;
+			index = index->blk_next;
+			free(index2);			
 		}//if
-		index = index->blk_next;
+		else
+		{
+			index = index->blk_next;
+		}
 	}
+	
+	cache->set_num_evt++;
+	cache->set_blk_evt+=max_size;
+	
 	if(i != max_size)
 	{
 		printf("+++++++++The blks evicted from EVT Cache %d != their set size %d !++++++++\n",i,max_size);
-		exit(-1);
+		cache->set_size[setn]=0;
+		//exit(-1);
 	}
 	if(i > 0)
 	{
@@ -234,7 +246,7 @@ void zac_delete_tail_set_evt(struct cache_info *cache)
 		if(cache->set_now_evt < 0)
 		{
 			printf("+++++++++A set is evicted from EVT Cache when EVT is empty !++++++++\n");
-			exit(-1);
+			//exit(-1);
 		}
 	}
 }
@@ -720,6 +732,10 @@ void zac_print(struct cache_info *cache)
 	printf("Cache Hit all Gst = %d\n",(cache->hit_red_gst + cache->hit_wrt_gst));
 	printf("Cache Hit Red Gst = %d\n",cache->hit_red_gst);
 	printf("Cache Hit Wrt Gst = %d\n",cache->hit_wrt_gst);
+	printf("----\n");
+	printf("Cache Evicted Sets = %d\n",cache->set_num_evt);
+	printf("Cache Evicted Blks = %d\n",cache->set_blk_evt);
+	printf("Cache Avg Set Size = %Lf\n",(long double)cache->set_blk_evt/(long double)cache->set_num_evt);
 	
 	printf("------------------------\n");
 }
