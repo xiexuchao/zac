@@ -49,6 +49,31 @@ void cache_run_larc(char *trace, char *output, char *smrTrc, char *ssdTrc, unsig
 }
 
 
+void cache_run_most(char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize)
+{
+	int i=0;
+	struct cache_info *cache;
+	
+	cache=(struct cache_info *)malloc(sizeof(struct cache_info));
+	cache_alloc_assert(cache,"cache");
+	memset(cache,0,sizeof(struct cache_info));
+	
+	most_init(cache,trace,output,smrTrc,ssdTrc,ssdsize);
+	while(cache_get_req(cache) != FAILURE)
+	{
+		most_main(cache);
+		
+		i++;
+		if(i%100000==0)
+		{
+			printf("MOST is Handling %d %s ssdsize=%d \n",i,trace,ssdsize);
+		}
+	}
+	most_print(cache);
+	cache_free(cache);
+}
+
+
 void cache_run_zac(char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize)
 {
 	int i=0;

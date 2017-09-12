@@ -115,6 +115,14 @@ void larc_delete_tail_blk_reg(struct cache_info *cache);
 void larc_delete_tail_blk_gst(struct cache_info *cache);
 void larc_print(struct cache_info *cache);
 
+//most
+void most_init(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize);
+void most_main(struct cache_info *cache);
+int  most_check_evt(struct cache_info *cache,unsigned int blkn,unsigned int state);
+void most_delete_tail_set_evt(struct cache_info *cache);
+int  most_find_max(struct cache_info* cache);
+void most_print(struct cache_info *cache);
+
 //zac
 void zac_init(struct cache_info *cache,char *trace, char *output, char *smrTrc, char *ssdTrc, unsigned int ssdsize);
 void zac_main(struct cache_info *cache);
