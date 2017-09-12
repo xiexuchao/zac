@@ -213,4 +213,22 @@ void lru_print(struct cache_info *cache)
 	printf("Cache Hit Wrt = %d || Wrt Hit Ratio = %Lf\n",
 			cache->hit_wrt_reg,(long double)cache->hit_wrt_reg/(long double)cache->blk_trc_wrt);
 	printf("------------------------\n");
+	
+	fprintf(cache->file_out,"----------------------------------------------\n");
+	fprintf(cache->file_out,"----------------------------------------------\n");
+	fprintf(cache->file_out,"Cache Max blk Reg = %d\n",cache->blk_max_all);
+	fprintf(cache->file_out,"Cache Now blk Reg = %d\n",cache->blk_now_reg);
+	fprintf(cache->file_out,"Cache Trc all blk = %d\n",cache->blk_trc_all);
+	fprintf(cache->file_out,"Cache Trc red blk = %d\n",cache->blk_trc_red);
+	fprintf(cache->file_out,"Cache Trc wrt blk = %d\n",cache->blk_trc_wrt);
+	fprintf(cache->file_out,"Write Traffic SSD = %d\n",cache->blk_ssd_wrt);
+	fprintf(cache->file_out,"------\n");
+	fprintf(cache->file_out,"Cache Hit All = %d || All Hit Ratio = %Lf \n",
+			(cache->hit_red_reg + cache->hit_wrt_reg),
+			(long double)(cache->hit_red_reg + cache->hit_wrt_reg)/(long double)cache->blk_trc_all);
+	fprintf(cache->file_out,"Cache Hit Red = %d || Red Hit Ratio = %Lf\n",
+			cache->hit_red_reg,(long double)cache->hit_red_reg/(long double)cache->blk_trc_red);
+	fprintf(cache->file_out,"Cache Hit Wrt = %d || Wrt Hit Ratio = %Lf\n",
+			cache->hit_wrt_reg,(long double)cache->hit_wrt_reg/(long double)cache->blk_trc_wrt);
+	fprintf(cache->file_out,"------------------------\n");
 }

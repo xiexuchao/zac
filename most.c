@@ -284,6 +284,32 @@ void most_print(struct cache_info *cache)
 	printf("Cache Evicted Sets = %d\n",cache->set_num_evt);
 	printf("Cache Evicted Blks = %d\n",cache->set_blk_evt);
 	printf("Cache Avg Set Size = %Lf\n",(long double)cache->set_blk_evt/(long double)cache->set_num_evt);
-	
 	printf("------------------------\n");
+	
+	fprintf(cache->file_out,"----------------------------------------------\n");
+	fprintf(cache->file_out,"----------------------------------------------\n");
+	fprintf(cache->file_out,"Cache Max blk Evt = %d\n",cache->blk_max_evt);
+	fprintf(cache->file_out,"Cache Now blk Evt = %d\n",cache->blk_now_evt);
+	fprintf(cache->file_out,"Cache Now set Evt = %d\n",cache->set_now_evt);
+	fprintf(cache->file_out,"Cache Trc all blk = %d\n",cache->blk_trc_all);
+	fprintf(cache->file_out,"Cache Trc red blk = %d\n",cache->blk_trc_red);
+	fprintf(cache->file_out,"Cache Trc wrt blk = %d\n",cache->blk_trc_wrt);
+	fprintf(cache->file_out,"Write Traffic SSD = %d\n",cache->blk_ssd_wrt);
+	fprintf(cache->file_out,"------\n");
+	fprintf(cache->file_out,"Cache Hit All = %d || All Hit Ratio = %Lf \n",
+			(cache->hit_red_evt+cache->hit_wrt_evt),
+			(long double)(cache->hit_red_evt+cache->hit_wrt_evt)/(long double)cache->blk_trc_all);
+	fprintf(cache->file_out,"Cache Hit Red = %d || Red Hit Ratio = %Lf\n",
+			(cache->hit_red_evt),(long double)(cache->hit_red_evt)/(long double)cache->blk_trc_red);
+	fprintf(cache->file_out,"Cache Hit Wrt = %d || Wrt Hit Ratio = %Lf\n",
+			(cache->hit_wrt_evt),(long double)(cache->hit_wrt_evt)/(long double)cache->blk_trc_wrt);
+	fprintf(cache->file_out,"----\n");
+	fprintf(cache->file_out,"Cache Hit all Evt = %d\n",(cache->hit_red_evt + cache->hit_wrt_evt));
+	fprintf(cache->file_out,"Cache Hit Red Evt = %d\n",cache->hit_red_evt);
+	fprintf(cache->file_out,"Cache Hit Wrt Evt = %d\n",cache->hit_wrt_evt);
+	fprintf(cache->file_out,"----\n");
+	fprintf(cache->file_out,"Cache Evicted Sets = %d\n",cache->set_num_evt);
+	fprintf(cache->file_out,"Cache Evicted Blks = %d\n",cache->set_blk_evt);
+	fprintf(cache->file_out,"Cache Avg Set Size = %Lf\n",(long double)cache->set_blk_evt/(long double)cache->set_num_evt);
+	fprintf(cache->file_out,"------------------------\n");
 }
