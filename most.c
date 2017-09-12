@@ -254,8 +254,6 @@ int most_check_evt(struct cache_info *cache,unsigned int blkn,unsigned int state
 		}
 	}
 	
-	
-	
 	return FAILURE;
 }
 

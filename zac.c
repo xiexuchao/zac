@@ -182,7 +182,7 @@ void zac_delete_tail_set_evt(struct cache_info *cache)
 	
 	setn = zac_find_max(cache);	
 	max_size = cache->set_size[setn];
-	printf("+++++++The size of evicted set is %d ++++++++\n",max_size);
+	printf("+++++++The size of evicted set %d is %d ++++++++\n",setn, max_size);
 	
 	index = cache->blk_head_evt;
 	while(index)
@@ -237,7 +237,8 @@ void zac_delete_tail_set_evt(struct cache_info *cache)
 	if(i != max_size)
 	{
 		printf("+++++++++The blks evicted from EVT Cache %d != their set size %d !++++++++\n",i,max_size);
-		cache->set_size[setn]=0;
+		printf("set %d size = %d \n",setn, cache->set_size[setn]);
+		//cache->set_size[setn]=0;
 		//exit(-1);
 	}
 	if(i > 0)
